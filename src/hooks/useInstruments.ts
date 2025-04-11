@@ -80,9 +80,7 @@ export function useInstruments() {
             setLoading(false);
         }
     };
-    useEffect(() => {
-        fetchInstruments();
-    }, []);
+
 
     return { instruments, loading, error, fetchInstruments, createInstrument, deleteInstrument, updateInstrument };
 }

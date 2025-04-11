@@ -65,7 +65,14 @@ export default function MusicSheetForm({ initialData, versionData, onClose }: Mu
       setUser(session.user?.id || "");
     }
   }, [session]);
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      await Promise.all([fetchInstruments(), fetchCategories()]);
+    };
 
+    fetchData();
+  }, []);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};

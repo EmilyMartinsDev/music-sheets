@@ -91,9 +91,27 @@ export function useMusicSheets() {
         }
     };
 
-    useEffect(() => {
-        fetchMusicSheets();
-    }, []);
+    const convertMusicSheetToMXL = async (sheetUrl: string): Promise<string> => {
+        try {
+            const response = await fetch("/api/musicsheets/convert", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sheetUrl }),
+            });
 
-    return { musicSheets, loading, error, fetchMusicSheets, createMusicSheet, deleteMusicSheet, updateMusicSheet };
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Failed to convert music sheet.");
+            }
+
+            const { mxlUrl } = await response.json();
+            return mxlUrl;
+        } catch (error: any) {
+            toast.error(error.message || "Erro ao converter a partitura.");
+            throw error;
+        }
+    };
+
+
+    return { musicSheets, loading, error, fetchMusicSheets, createMusicSheet, deleteMusicSheet, updateMusicSheet, convertMusicSheetToMXL };
 }

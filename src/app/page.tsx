@@ -14,8 +14,10 @@ import { useMusicSheets } from "@/src/hooks/useMusicSheets";
 import { MusicSheet } from "../domain/entities/MusicSheet";
 import { MusicSheetVersion } from "../domain/entities/MusicSheetVersion";
 import ConfirmationDialog from "@/src/components/confirmation-dialog";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
   const { 
     musicSheets, 
     loading, 
@@ -56,6 +58,15 @@ export default function Home() {
       setIsConfirmOpen(false);
     }
   };
+
+  const handleViewClick = (sheetId: string) => {
+    router.push(`/view-music-sheet/${sheetId}`);
+  };
+
+useEffect(() => {
+  fetchMusicSheets()
+}
+, []);
 
   if (loading) return <Loading />;
   if (error) {
@@ -119,7 +130,7 @@ export default function Home() {
       accessor: (sheet: MusicSheet) => (
         <div className="flex gap-2">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
@@ -127,6 +138,16 @@ export default function Home() {
             }}
           >
             Editar
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewClick(sheet.id);
+            }}
+          >
+            Visualizar
           </Button>
           <Button
             variant="ghost"

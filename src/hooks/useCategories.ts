@@ -80,9 +80,6 @@ export function useCategories() {
             setLoading(false);
         }
     };
-    useEffect(() => {
-        fetchCategories();
-    }, []);
 
     return { categories, loading, error, fetchCategories, createCategory, deleteCategory, updateCategory };
 }
