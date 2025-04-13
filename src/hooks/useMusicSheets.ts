@@ -6,6 +6,7 @@ import { MusicSheet } from "../domain/entities/MusicSheet";
 
 export function useMusicSheets() {
     const [musicSheets, setMusicSheets] = useState<MusicSheet[]>([]);
+    const [musicSheet, setMusicSheet] = useState<MusicSheet | null>(null);  
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const API_BASE_URL = "/api/musicsheets";
@@ -112,6 +113,79 @@ export function useMusicSheets() {
         }
     };
 
+    const fetchMusicSheetPdf = async (mxlUrl: string): Promise<Blob> => {
+        try {
+            const response = await fetch("/api/musicsheets/convert/pdf", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mxlUrl }),
+            });
 
-    return { musicSheets, loading, error, fetchMusicSheets, createMusicSheet, deleteMusicSheet, updateMusicSheet, convertMusicSheetToMXL };
+            if (!response.ok) {
+                throw new Error("Failed to convert MXL to PDF.");
+            }
+
+            return await response.blob();
+        } catch (error: any) {
+            toast.error(error.message || "Erro ao converter a partitura para PDF.");
+            throw error;
+        }
+    };
+
+    const renderMusicSheet = async (id: string): Promise<string> => {
+        setLoading(true);
+        setError(null);
+        try {
+          const response = await fetch('/api/render-music', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+          });
+      
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to render music sheet');
+          }
+      
+          const { mxlUrl } = await response.json();
+          return mxlUrl;
+        } catch (err: any) {
+          setError(err.message);
+          toast.error(err.message || 'Failed to render music sheet');
+          throw err;
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+    const fetchMusicSheet = async (id:string) => {
+        try {
+            const response = await fetch(`/api/musicsheets/${id}`);
+            if (!response.ok) {
+                throw new Error("Erro ao buscar a partitura.");
+            }
+
+            const data = await response.json();
+             setMusicSheet(data);   
+        } catch (error) {
+            toast.error("Erro ao buscar a partitura.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return { 
+        musicSheets, 
+        loading, 
+        error, 
+        musicSheet,  
+        fetchMusicSheets,
+        fetchMusicSheet,
+        createMusicSheet,
+        deleteMusicSheet,
+        updateMusicSheet,
+        convertMusicSheetToMXL,
+        fetchMusicSheetPdf,
+        renderMusicSheet
+    };
 }

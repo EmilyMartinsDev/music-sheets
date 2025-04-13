@@ -2,17 +2,31 @@ import { musicSheetService } from "@/src/config/dependencies";
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/src/config/supabase";
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-  try {
-    const musicSheet = await musicSheetService.getMusicSheetById(params.id);
-    return NextResponse.json(musicSheet, { status: 200 });
-  } catch (error:any) {
-    return NextResponse.json({ error: error.message || "Failed to fetch music sheet" }, { status: 500 });
-  }
+export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+    try {
+        const { id } = await context.params; // Await params before destructuring
+
+        if (!id) {
+            return NextResponse.json({ error: "MusicSheet ID is required." }, { status: 400 });
+        }
+
+        const musicSheet = await musicSheetService.getMusicSheetById(id);
+        if (!musicSheet) {
+            return NextResponse.json({ error: "MusicSheet not found." }, { status: 404 });
+        }
+
+        return NextResponse.json(musicSheet, { status: 200 });
+    } catch (error: any) {
+        console.error("Error in fetching music sheet by ID:", error.message);
+        return NextResponse.json(
+            { error: error.message || "Failed to fetch music sheet." },
+            { status: 500 }
+        );
+    }
 }
 
 export async function PUT(req: NextRequest, context: { params: { id: string } }) {
-  const { id } = context.params;
+  const { id } = await context.params;
 
   try {
     const formData = await req.formData();

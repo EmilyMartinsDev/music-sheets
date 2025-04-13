@@ -5,6 +5,7 @@ export class MusicSheet {
     id: string;
     name: string;
     file: string;
+    fileXML?: string | null;
     createdAt: Date;
     updatedAt: Date;
     userId: string;
@@ -20,6 +21,7 @@ export class MusicSheet {
         userId: string;
         category?: Partial<MusicSheetCategory> | null;
         instrument?: Partial<MusicSheetInstrument> | null;
+        fileXML?: string | null;
     }) {
         this.id = props.id;
         this.name = props.name;
@@ -28,9 +30,9 @@ export class MusicSheet {
         this.updatedAt = props.updatedAt;
         this.userId = props.userId;
         this.category = props.category || null;
-        this.instrument = props.instrument || null;
-
-        this.validate();
+        this.instrument = props.instrument || null; 
+        this.fileXML = props.fileXML || null;
+        this.validate();    
     }
 
     protected validate(): void {

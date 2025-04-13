@@ -1,0 +1,13 @@
+FROM registry.gitlab.com/nicolalandro/audiveris-docker/audiveris:5.2.5
+
+USER root
+
+RUN apt-get update && apt-get install -y \
+  libfreetype6 \
+  libfreetype6-dev
+
+# Linka a libfreetype.so pra garantir acesso via JNA
+RUN ln -s /usr/lib/x86_64-linux-gnu/libfreetype.so.6 /usr/lib/libfreetype.so
+
+# Exporta caminho pra garantir que JNA encontre
+ENV LD_LIBRARY_PATH=/usr/lib:/usr/lib/x86_64-linux-gnu
