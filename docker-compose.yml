@@ -1,4 +1,4 @@
-version: "3.8"
+
 
 services:
   db:
@@ -13,20 +13,6 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
-  audiveris:
-    image: registry.gitlab.com/nicolalandro/audiveris-docker/audiveris:5.2.5
-    container_name: audiveris
-    build:
-      context: .
-      dockerfile: Dockerfile
-    environment:
-      - JAVA_OPTS=-Djava.awt.headless=true
-      - TESSDATA_PREFIX=/usr/share/tesseract-ocr/4.00/
-    volumes:
-      - ./input:/input
-      - ./output:/output
-    working_dir: /input
-    entrypoint: ["sleep", "infinity"]
 
 volumes:
   postgres-data:

@@ -31,6 +31,7 @@ export async function PUT(req: NextRequest, context: { params: { id: string } })
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
+    const fileXML = formData.get("fileXML") as File | null;
 
     const dataToUpdate: any = {
       name: formData.get("name") as string | undefined,
@@ -61,7 +62,29 @@ export async function PUT(req: NextRequest, context: { params: { id: string } })
 
       dataToUpdate.file = publicUrl;
     }
+    if (fileXML) {
+      const fileBuffer = await fileXML.arrayBuffer();
+      const sanitizedFileName = fileXML.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+      const filePath = `${Date.now()}-${sanitizedFileName}`;
 
+      const { error: uploadError } = await supabase.storage
+        .from("music")
+        .upload(filePath, fileBuffer, { contentType: fileXML.type });
+
+      if (uploadError) {
+        console.error("Erro ao fazer upload para o Supabase:", uploadError.message);
+        throw new Error(`Erro ao fazer upload para o Supabase: ${uploadError.message}`);
+      }
+
+      const { data: publicUrlData } = supabase.storage.from("music").getPublicUrl(filePath);
+      const publicUrl = publicUrlData?.publicUrl;
+
+      if (!publicUrl) {
+        throw new Error("Erro ao obter URL pública do arquivo.");
+      }
+
+      dataToUpdate.fileXML = publicUrl;
+    }
     const updatedMusicSheet = await musicSheetService.updateMusicSheet(id, dataToUpdate);
     console.log("Resposta do serviço de atualização:", updatedMusicSheet);
 

@@ -113,12 +113,12 @@ export function useMusicSheets() {
         }
     };
 
-    const fetchMusicSheetPdf = async (mxlUrl: string): Promise<Blob> => {
+    const fetchMusicSheetPdf = async (pdfUrl: string): Promise<Blob> => {
         try {
-            const response = await fetch("/api/musicsheets/convert/pdf", {
+            const response = await fetch("/api/musicsheets/pdf", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ mxlUrl }),
+                body: JSON.stringify({ pdfUrl }),
             });
 
             if (!response.ok) {

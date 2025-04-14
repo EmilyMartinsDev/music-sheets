@@ -3,9 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
-import { Textarea } from "@/src/components/ui/textarea";
 import { Label } from "@/src/components/ui/label";
-import { FileText, Upload, X, Download, Loader } from "lucide-react"; // Adicionado Loader
+import { FileText, Upload, X, Download, Loader } from "lucide-react";
 import CustomSelect from "@/src/components/custom-select";
 import { useCategories } from "@/src/hooks/useCategories";
 import { useInstruments } from "@/src/hooks/useInstruments";
@@ -26,36 +25,47 @@ export default function MusicSheetForm({ initialData, versionData, onClose }: Mu
   const [title, setTitle] = useState(initialData?.name || "");
   const [instrument, setInstrument] = useState(initialData?.instrument?.id || "");
   const [category, setCategory] = useState(initialData?.category?.id || "");
-  const [file, setFile] = useState<string | undefined>(initialData?.file);
-  const [fileName, setFileName] = useState<string | undefined>(undefined);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePDF, setFilePDF] = useState<string | undefined>(initialData?.file);
+  const [fileXML, setFileXML] = useState<string | undefined>(initialData?.fileXML);
+  const [fileNamePDF, setFileNamePDF] = useState<string | undefined>();
+  const [fileNameXML, setFileNameXML] = useState<string | undefined>();
+  const [selectedFilePDF, setSelectedFilePDF] = useState<File | null>(null);
+  const [selectedFileXML, setSelectedFileXML] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isViewingVersion, setIsViewingVersion] = useState(false);
   const { data: session } = useSession();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const filePDFInputRef = useRef<HTMLInputElement>(null);
+  const fileXMLInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (initialData) {
       setTitle(initialData.name);
       setInstrument(initialData.instrument?.id || "");
       setCategory(initialData.category?.id || "");
-      setFile(initialData.file);
-      setFileName(undefined);
+      setFilePDF(initialData.file);
+      setFileXML(initialData.fileXML);
+      setFileNamePDF(undefined);
+      setFileNameXML(undefined);
       setIsViewingVersion(false);
     } else if (versionData) {
       setTitle(versionData.name);
       setInstrument(versionData.instrument?.id || "");
       setCategory(versionData.category?.id || "");
-      setFile(versionData.file);
-      setFileName(undefined);
+      setFilePDF(versionData.file);
+      setFileXML(versionData.fileXML);
+      setFileNamePDF(undefined);
+      setFileNameXML(undefined);
       setIsViewingVersion(true);
     } else {
       setTitle("");
       setInstrument("");
       setCategory("");
-      setFile(undefined);
-      setFileName(undefined);
-      setSelectedFile(null);
+      setFilePDF(undefined);
+      setFileXML(undefined);
+      setFileNamePDF(undefined);
+      setFileNameXML(undefined);
+      setSelectedFilePDF(null);
+      setSelectedFileXML(null);
       setIsViewingVersion(false);
     }
   }, [initialData, versionData]);
@@ -65,67 +75,70 @@ export default function MusicSheetForm({ initialData, versionData, onClose }: Mu
       setUser(session.user?.id || "");
     }
   }, [session]);
-  
+
   useEffect(() => {
     const fetchData = async () => {
       await Promise.all([fetchInstruments(), fetchCategories()]);
     };
-
     fetchData();
   }, []);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-
-    if (!title.trim()) {
-      newErrors.title = "O título é obrigatório";
-    }
-
-    if (!instrument) {
-      newErrors.instrument = "O instrumento é obrigatório";
-    }
-
-    if (!category) {
-      newErrors.category = "A categoria é obrigatória";
-    }
-
-    if (!file && !selectedFile) {
-      newErrors.file = "O arquivo da partitura é obrigatório";
-    }
-
+    if (!title.trim()) newErrors.title = "O título é obrigatório";
+    if (!instrument) newErrors.instrument = "O instrumento é obrigatório";
+    if (!category) newErrors.category = "A categoria é obrigatória";
+    if (!filePDF && !selectedFilePDF) newErrors.filePDF = "O PDF da partitura é obrigatório";
+    if (!fileXML && !selectedFileXML) newErrors.fileXML = "O arquivo MusicXML é obrigatório";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFilePDFChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setSelectedFile(file);
-      setFileName(file.name);
-      setFile(undefined); // Limpa o arquivo existente ao selecionar um novo
+      setSelectedFilePDF(file);
+      setFileNamePDF(file.name);
+      setFilePDF(undefined);
     }
   };
 
-  const handleRemoveFile = () => {
-    setSelectedFile(null);
-    setFile(undefined);
-    setFileName(undefined);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  const handleFileXMLChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFileXML(file);
+      setFileNameXML(file.name);
+      setFileXML(undefined);
+    }
+  };
+
+  const handleRemoveFilePDF = () => {
+    setSelectedFilePDF(null);
+    setFilePDF(undefined);
+    setFileNamePDF(undefined);
+    if (filePDFInputRef.current) filePDFInputRef.current.value = "";
+  };
+
+  const handleRemoveFileXML = () => {
+    setSelectedFileXML(null);
+    setFileXML(undefined);
+    setFileNameXML(undefined);
+    if (fileXMLInputRef.current) fileXMLInputRef.current.value = "";
+  };
+
+  const handleDownload = (url: string) => {
+    if (url) {
+      window.open(url, "_blank");
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (isViewingVersion) {
       onClose();
       return;
     }
-
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
       const formData = new FormData();
@@ -134,9 +147,8 @@ export default function MusicSheetForm({ initialData, versionData, onClose }: Mu
       formData.append("categoryId", category);
       formData.append("userId", user);
 
-      if (selectedFile) {
-        formData.append("file", selectedFile);
-      }
+      if (selectedFilePDF) formData.append("file", selectedFilePDF);
+      if (selectedFileXML) formData.append("fileXML", selectedFileXML);
 
       if (initialData) {
         await updateMusicSheet(initialData.id, formData);
@@ -145,30 +157,19 @@ export default function MusicSheetForm({ initialData, versionData, onClose }: Mu
       }
 
       onClose();
-    } catch (error: any) {
-     
-    }
+    } catch (error) {}
   };
 
   const restoreVersion = () => {
     if (!versionData) return;
-
     console.log(`Restaurando para versão ${versionData.id}`);
     onClose();
-  };
-
-  const handleDownload = () => {
-    if (file) {
-      window.open(file, "_blank");
-    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 mt-4">
       <div className="space-y-2">
-        <Label htmlFor="title" className="text-sm font-medium">
-          Título
-        </Label>
+        <Label htmlFor="title">Título</Label>
         <Input
           id="title"
           value={title}
@@ -177,19 +178,14 @@ export default function MusicSheetForm({ initialData, versionData, onClose }: Mu
           className={errors.title ? "border-red-500" : ""}
           disabled={isViewingVersion}
         />
-        {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
+        {errors.title && <p className="text-red-500 text-xs">{errors.title}</p>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="instrument" className="text-sm font-medium">
-            Instrumento
-          </Label>
+          <Label htmlFor="instrument">Instrumento</Label>
           {loadingInstruments ? (
-            <div className="flex items-center gap-2">
-              <Loader className="animate-spin h-5 w-5 text-gray-500" />
-              <span className="text-sm text-gray-500">Carregando instrumentos...</span>
-            </div>
+            <Loader className="animate-spin h-5 w-5 text-gray-500" />
           ) : (
             <CustomSelect
               id="instrument"
@@ -201,18 +197,13 @@ export default function MusicSheetForm({ initialData, versionData, onClose }: Mu
               isDisabled={isViewingVersion}
             />
           )}
-          {errors.instrument && <p className="text-red-500 text-xs mt-1">{errors.instrument}</p>}
+          {errors.instrument && <p className="text-red-500 text-xs">{errors.instrument}</p>}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="category" className="text-sm font-medium">
-            Categoria
-          </Label>
+          <Label htmlFor="category">Categoria</Label>
           {loadingCategories ? (
-            <div className="flex items-center gap-2">
-              <Loader className="animate-spin h-5 w-5 text-gray-500" />
-              <span className="text-sm text-gray-500">Carregando categorias...</span>
-            </div>
+            <Loader className="animate-spin h-5 w-5 text-gray-500" />
           ) : (
             <CustomSelect
               id="category"
@@ -224,38 +215,24 @@ export default function MusicSheetForm({ initialData, versionData, onClose }: Mu
               isDisabled={isViewingVersion}
             />
           )}
-          {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
+          {errors.category && <p className="text-red-500 text-xs">{errors.category}</p>}
         </div>
       </div>
 
+      {/* PDF Upload */}
       <div className="space-y-2">
-        <Label htmlFor="file" className="text-sm font-medium">
-          Arquivo da Partitura
-        </Label>
-
-        {file ? (
+        <Label>Partitura (PDF)</Label>
+        {filePDF ? (
           <div className="flex items-center p-2 border rounded-md bg-gray-50">
             <FileText className="h-5 w-5 text-blue-600 mr-2" />
-            <span className="text-sm flex-1 truncate">{file.split("/").pop()}</span>
+            <span className="text-sm flex-1 truncate">{filePDF.split("/").pop()}</span>
             <div className="flex gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={handleDownload}
-              >
+              <Button type="button" variant="ghost" size="sm" onClick={() => handleDownload(filePDF)}>
                 <Download className="h-4 w-4 text-blue-600" />
               </Button>
               {!isViewingVersion && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                  onClick={handleRemoveFile}
-                >
-                  <X className="h-4 w-4" />
+                <Button type="button" variant="ghost" size="sm" onClick={handleRemoveFilePDF}>
+                  <X className="h-4 w-4 text-red-500" />
                 </Button>
               )}
             </div>
@@ -263,35 +240,74 @@ export default function MusicSheetForm({ initialData, versionData, onClose }: Mu
         ) : (
           <div className="flex items-center gap-2">
             <Input
-              ref={fileInputRef}
-              id="file"
+              ref={filePDFInputRef}
               type="file"
-              accept=".pdf,.xml,.musicxml"
-              onChange={handleFileChange}
-              className={`flex-1 ${errors.file ? "border-red-500" : ""}`}
+              accept=".pdf"
+              onChange={handleFilePDFChange}
+              className={`flex-1 ${errors.filePDF ? "border-red-500" : ""}`}
               disabled={isViewingVersion}
             />
             <Button
               type="button"
               variant="outline"
-              className="flex items-center gap-1"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => filePDFInputRef.current?.click()}
               disabled={isViewingVersion}
             >
               <Upload className="h-4 w-4" />
-              Selecionar
+              PDF
             </Button>
           </div>
         )}
-        {errors.file && <p className="text-red-500 text-xs mt-1">{errors.file}</p>}
-        <p className="text-xs text-gray-500 mt-1">Formatos aceitos: PDF, MusicXML (.xml, .musicxml)</p>
+        {errors.filePDF && <p className="text-red-500 text-xs">{errors.filePDF}</p>}
+      </div>
+
+      {/* MusicXML Upload */}
+      <div className="space-y-2">
+        <Label>Partitura (MusicXML)</Label>
+        {fileXML ? (
+          <div className="flex items-center p-2 border rounded-md bg-gray-50">
+            <FileText className="h-5 w-5 text-purple-600 mr-2" />
+            <span className="text-sm flex-1 truncate">{fileXML.split("/").pop()}</span>
+            <div className="flex gap-1">
+              <Button type="button" variant="ghost" size="sm" onClick={() => handleDownload(fileXML)}>
+                <Download className="h-4 w-4 text-purple-600" />
+              </Button>
+              {!isViewingVersion && (
+                <Button type="button" variant="ghost" size="sm" onClick={handleRemoveFileXML}>
+                  <X className="h-4 w-4 text-red-500" />
+                </Button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Input
+              ref={fileXMLInputRef}
+              type="file"
+              accept=".xml,.mxl,.musicxml"
+              onChange={handleFileXMLChange}
+              className={`flex-1 ${errors.fileXML ? "border-red-500" : ""}`}
+              disabled={isViewingVersion}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => fileXMLInputRef.current?.click()}
+              disabled={isViewingVersion}
+            >
+              <Upload className="h-4 w-4" />
+              XML
+            </Button>
+          </div>
+        )}
+        {errors.fileXML && <p className="text-red-500 text-xs">{errors.fileXML}</p>}
       </div>
 
       {versionData && (
         <div className="bg-blue-50 p-3 rounded-md mt-2">
           <p className="text-sm text-blue-700">
-            Você está visualizando a versão {versionData.version} desta partitura, criada em{" "}
-            {new Date(versionData.createdAt).toLocaleString()} por {versionData?.user.name}.
+            Você está visualizando a versão {versionData.version}, criada em{" "}
+            {new Date(versionData.createdAt).toLocaleString()} por {versionData.user?.name}.
           </p>
         </div>
       )}
@@ -300,13 +316,11 @@ export default function MusicSheetForm({ initialData, versionData, onClose }: Mu
         <Button type="button" variant="outline" onClick={onClose}>
           {isViewingVersion ? "Fechar" : "Cancelar"}
         </Button>
-
         {versionData && (
           <Button type="button" className="bg-blue-600 hover:bg-blue-700" onClick={restoreVersion}>
             Restaurar Esta Versão
           </Button>
         )}
-
         {!isViewingVersion && (
           <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
             {initialData ? "Atualizar" : "Salvar"}

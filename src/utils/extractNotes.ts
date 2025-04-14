@@ -1,44 +1,60 @@
-import { existsSync, readdirSync, readFileSync } from 'fs';
-import path from 'path'; // Missing import
-import { NextResponse } from 'next/server';
-import AdmZip from 'adm-zip';
-import { parseStringPromise } from 'xml2js';
+import { document } from 'musicxml-interfaces';
+import { Note } from 'musicxml-interfaces/note-types';
 
-export async function extrairNotasDeMXL(mxlPath: string) {
-    const extractPath = mxlPath.replace('.mxl', '');
-    const zip = new AdmZip(mxlPath);
-    zip.extractAllTo(extractPath, true);
+export interface SheetMusicNote {
+  pitch: string;       // Ex: "C4", "D#5"
+  duration: string;    // Ex: "4n" (quarter note), "8n" (eighth note)
+  velocity: number;    // 0-1
+  startTime: number;   // Em segundos
+}
 
-    const files = readdirSync(extractPath);
-    const xmlFile = files.find((f) => f.endsWith('.xml'));
+export async function parseMusicXml(xmlData: ArrayBuffer): Promise<SheetMusicNote[]> {
+  const xmlText = new TextDecoder().decode(xmlData);
+  const parser = new DOMParser();
+  const xmlDoc = parser.parseFromString(xmlText, "application/xml");
+  
+  // Verifica erros de parsing
+  const parserErrors = xmlDoc.getElementsByTagName("parsererror");
+  if (parserErrors.length > 0) {
+    throw new Error("Erro ao parsear MusicXML");
+  }
 
-    if (!xmlFile) {
-        return NextResponse.json({ error: 'XML não encontrado no MXL extraído.' }, { status: 500 });
-    }
+  const notes: SheetMusicNote[] = [];
+  const allNotes = xmlDoc.getElementsByTagName("note");
 
-    const xmlContent = readFileSync(path.join(extractPath, xmlFile), 'utf-8');
-    const parsed = await parseStringPromise(xmlContent);
-    const notas: string[] = [];
+  // Configuração de tempo (120 BPM padrão)
+  const bpm = 120;
+  const beatDuration = 60 / bpm; // Duração de uma semínima em segundos
 
-    const pitchToNota: Record<string, string> = {
-        C: 'DO', D: 'RÉ', E: 'MI', F: 'FÁ', G: 'SOL', A: 'LÁ', B: 'SI',
-    };
+  Array.from(allNotes).forEach((noteElement, index) => {
+    const pitchElement = noteElement.getElementsByTagName("pitch")[0];
+    if (!pitchElement) return; // Ignora notas sem pitch (pausas)
 
-    const partes = parsed['score-partwise']['part'];
-    for (const parte of partes) {
-        for (const medida of parte['measure']) {
-            for (const elemento of medida['note']) {
-                if (elemento['rest']) continue;
-                const pitch = elemento['pitch']?.[0];
-                if (pitch) {
-                    const nota = pitchToNota[pitch['step'][0]];
-                    if (nota) {
-                        notas.push(nota);
-                    }
-                }
-            }
-        }
-    }
+    const step = pitchElement.getElementsByTagName("step")[0]?.textContent || "C";
+    const octave = pitchElement.getElementsByTagName("octave")[0]?.textContent || "4";
+    const alter = pitchElement.getElementsByTagName("alter")[0]?.textContent;
+    
+    const durationElement = noteElement.getElementsByTagName("duration")[0];
+    const duration = durationElement ? parseInt(durationElement.textContent || "1") : 1;
 
-    return notas;
+    // Formata a nota (ex: C#4)
+    const pitch = `${step}${alter ? '#' : ''}${octave}`;
+    
+    // Converte duração para notação do Tone.js
+    let toneDuration: string;
+    if (duration >= 4) toneDuration = '1n';      // Nota inteira
+    else if (duration >= 2) toneDuration = '2n'; // Meia nota
+    else if (duration >= 1) toneDuration = '4n'; // Quarto de nota
+    else if (duration >= 0.5) toneDuration = '8n';
+    else toneDuration = '16n';
+
+    notes.push({
+      pitch,
+      duration: toneDuration,
+      velocity: 0.8,
+      startTime: index * 0.5 // Timing simplificado
+    });
+  });
+
+  return notes;
 }
