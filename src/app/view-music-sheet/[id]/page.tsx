@@ -1,7 +1,7 @@
 // ⛔️ TROCAR TODO O ARQUIVO page.tsx por esse
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/src/components/ui/button";
 import { Slider } from "@/src/components/ui/slider";
@@ -12,9 +12,16 @@ import { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import * as Tone from "tone";
 import JSZip from "jszip";
 
+
+interface Note {
+  pitch?: string;
+  rest: boolean;
+  duration: number;
+  measure: number;
+}
+
 export default function MusicSheetViewer() {
-  const params = useParams();
-  const id = params.id as string;
+  const { id } = useParams();
   const [sheetData, setSheetData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [osmd, setOsmd] = useState<OpenSheetMusicDisplay | null>(null);
@@ -22,20 +29,18 @@ export default function MusicSheetViewer() {
   const [volume, setVolume] = useState(-6);
   const [bpm, setBpm] = useState(90);
   const [currentMeasure, setCurrentMeasure] = useState<number | null>(null);
-
   const [loopEnabled, setLoopEnabled] = useState(false);
   const [loopRange, setLoopRange] = useState<[number, number]>([1, 1]);
   const [maxMeasure, setMaxMeasure] = useState(1);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const xmlContentRef = useRef<string | null>(null);
-  const notesRef = useRef<
-    { pitch?: string; rest: boolean; duration: number; measure: number }[]
-  >([]);
+  const notesRef = useRef<Note[]>([]);
   const synthRef = useRef<Tone.PolySynth | null>(null);
 
+  // === FETCH PARTITURA ===
   useEffect(() => {
-    const fetchSheet = async () => {
+    const fetchSheetData = async () => {
       try {
         const res = await fetch(`/api/musicsheets/${id}`);
         const data = await res.json();
@@ -46,119 +51,111 @@ export default function MusicSheetViewer() {
         setLoading(false);
       }
     };
-    fetchSheet();
+
+    fetchSheetData();
   }, [id]);
 
+  // === LOAD XML ===
   useEffect(() => {
-    const loadXML = async () => {
-      if (sheetData?.fileXML && containerRef.current) {
-        try {
-          const response = await fetch(sheetData.fileXML);
-          if (!response.ok) throw new Error("Arquivo não encontrado");
+    if (!sheetData?.fileXML || !containerRef.current) return;
 
-          const isMXL = sheetData.fileXML.toLowerCase().endsWith(".mxl");
-          const osmdInstance = new OpenSheetMusicDisplay(containerRef.current, {
-            backend: "svg",
-            drawTitle: true,
-            cursorsOptions: {
-              type: 1,
-              follow: true,
-              color: "#00ff55",
-            },
-          });
+    const loadScore = async () => {
+      try {
+        const xml = await getXMLContent(sheetData.fileXML);
+        xmlContentRef.current = xml;
 
-          let xmlContent: string;
-
-          if (isMXL) {
-            const buffer = await response.arrayBuffer();
-            const zip = await JSZip.loadAsync(buffer);
-            const xmlFile = Object.values(zip.files).find((file) =>
-              file.name.toLowerCase().endsWith(".xml")
-            );
-            if (!xmlFile) throw new Error("Nenhum .xml encontrado no .mxl");
-
-            xmlContent = await xmlFile.async("text");
-          } else {
-            xmlContent = await response.text();
-            if (!xmlContent.includes("<score-partwise")) {
-              throw new Error("Arquivo XML inválido");
-            }
-          }
-
-          xmlContentRef.current = xmlContent;
-          await osmdInstance.load(xmlContent);
-          await osmdInstance.render();
-
-          try {
-            osmdInstance.cursor?.reset();
-            osmdInstance.cursor?.show();
-          } catch (e) {
-            console.warn("Erro ao exibir cursor:", e);
-          }
-
-          setOsmd(osmdInstance);
-          extractNotes(xmlContent);
-        } catch (err) {
-          console.error("Erro ao renderizar partitura:", err);
+        if (!containerRef.current) {
+          throw new Error("Container element is not available");
         }
+
+        const osmdInstance = new OpenSheetMusicDisplay(containerRef.current, {
+          backend: "svg",
+          drawTitle: true,
+          cursorsOptions: {
+            type: 1,
+            follow: true,
+            color: "#00ff55",
+          },
+        });
+
+        await osmdInstance.load(xml);
+        containerRef.current.innerHTML = ""; // limpar render antigo
+        await osmdInstance.render();
+        osmdInstance.cursor?.reset();
+        osmdInstance.cursor?.show();
+
+        setOsmd(osmdInstance);
+        parseNotes(xml);
+      } catch (err) {
+        console.error("Erro ao renderizar partitura:", err);
       }
     };
 
-    if (sheetData?.fileXML) loadXML();
+    loadScore();
   }, [sheetData]);
 
-  const extractNotes = (xml: string) => {
+  const getXMLContent = async (fileURL: string): Promise<string> => {
+    const response = await fetch(fileURL);
+    if (!response.ok) throw new Error("Arquivo não encontrado");
+
+    if (fileURL.toLowerCase().endsWith(".mxl")) {
+      const buffer = await response.arrayBuffer();
+      const zip = await JSZip.loadAsync(buffer);
+      const xmlFile = Object.values(zip.files).find((file) =>
+        file.name.toLowerCase().endsWith(".xml")
+      );
+      if (!xmlFile) throw new Error("Nenhum .xml encontrado dentro do .mxl");
+
+      return await xmlFile.async("text");
+    }
+
+    const text = await response.text();
+    if (!text.includes("<score-partwise")) {
+      throw new Error("Documento XML inválido para MusicXML");
+    }
+
+    return text;
+  };
+
+  // === PARSE MUSICXML NOTES ===
+  const parseNotes = (xml: string) => {
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xml, "application/xml");
+    const divisions = parseInt(xmlDoc.querySelector("divisions")?.textContent || "1");
 
-    const divisionsNode = xmlDoc.querySelector("divisions");
-    const divisions = divisionsNode ? parseInt(divisionsNode.textContent || "1") : 1;
+    const notes: Note[] = [];
 
     const measures = Array.from(xmlDoc.getElementsByTagName("measure"));
-    const notes: {
-      pitch?: string;
-      rest: boolean;
-      duration: number;
-      measure: number;
-    }[] = [];
-
-    for (let i = 0; i < measures.length; i++) {
-      const measure = measures[i];
-      const measureNumber = parseInt(measure.getAttribute("number") || `${i + 1}`);
+    for (const [index, measure] of measures.entries()) {
+      const measureNumber = parseInt(measure.getAttribute("number") || `${index + 1}`);
       const noteEls = Array.from(measure.getElementsByTagName("note"));
 
-      for (const note of noteEls) {
-        const isRest = note.getElementsByTagName("rest").length > 0;
-        const durationRaw = parseInt(note.getElementsByTagName("duration")[0]?.textContent || "1");
-        const durationQuarter = durationRaw / divisions;
+      for (const noteEl of noteEls) {
+        const isRest = noteEl.getElementsByTagName("rest").length > 0;
+        const duration = parseInt(noteEl.getElementsByTagName("duration")[0]?.textContent || "1");
+        const durationQuarter = duration / divisions;
 
         let pitch;
         if (!isRest) {
-          const step = note.getElementsByTagName("step")[0]?.textContent || "";
-          const octave = note.getElementsByTagName("octave")[0]?.textContent || "";
-          const alter = note.getElementsByTagName("alter")[0]?.textContent;
-          let accidental = "";
-          if (alter === "1") accidental = "#";
-          if (alter === "-1") accidental = "b";
+          const step = noteEl.getElementsByTagName("step")[0]?.textContent || "";
+          const octave = noteEl.getElementsByTagName("octave")[0]?.textContent || "";
+          const alter = noteEl.getElementsByTagName("alter")[0]?.textContent;
+          const accidental = alter === "1" ? "#" : alter === "-1" ? "b" : "";
           pitch = `${step}${accidental}${octave}`;
         }
 
-        notes.push({
-          pitch,
-          rest: isRest,
-          duration: durationQuarter,
-          measure: measureNumber,
-        });
+        notes.push({ pitch, rest: isRest, duration: durationQuarter, measure: measureNumber });
       }
     }
 
     notesRef.current = notes;
-    const lastMeasure = Math.max(...notes.map((n) => n.measure));
-    setLoopRange([1, lastMeasure]);
-    setMaxMeasure(lastMeasure);
+    const last = Math.max(...notes.map((n) => n.measure));
+    setLoopRange([1, last]);
+    setMaxMeasure(last);
   };
 
-  const startPlayback = async () => {
+  // === PLAYBACK ===
+  const startPlayback = useCallback(async () => {
     if (!osmd || !xmlContentRef.current) return;
 
     await Tone.start();
@@ -171,13 +168,8 @@ export default function MusicSheetViewer() {
 
     Tone.Transport.cancel();
     Tone.Transport.bpm.value = bpm;
-
-    try {
-      osmd.cursor?.reset();
-      osmd.cursor?.show();
-    } catch (e) {
-      console.warn("Erro ao resetar cursor:", e);
-    }
+    osmd.cursor?.reset();
+    osmd.cursor?.show();
 
     const allNotes = notesRef.current;
     const [loopStart, loopEnd] = loopRange;
@@ -185,59 +177,40 @@ export default function MusicSheetViewer() {
       ? allNotes.filter((n) => n.measure >= loopStart && n.measure <= loopEnd)
       : allNotes;
 
-    let now = Tone.now();
-    let timeCursor = 0;
+    let time = 0;
+    for (const note of notes) {
+      const dur = (60 / bpm) * note.duration;
 
-    const scheduleNotes = () => {
-      for (let i = 0; i < notes.length; i++) {
-        const note = notes[i];
-        const durSec = (60 / bpm) * note.duration;
+      Tone.Transport.scheduleOnce((t) => {
+        if (!note.rest && note.pitch) {
+          synthRef.current?.triggerAttackRelease(note.pitch, dur, t);
+        }
+        setCurrentMeasure(note.measure);
+        osmd.cursor?.next();
+      }, time);
 
-        Tone.Transport.scheduleOnce((t) => {
-          if (!note.rest && note.pitch) {
-            synthRef.current?.triggerAttackRelease(note.pitch, durSec, t);
-          }
+      time += dur;
+    }
 
-          setCurrentMeasure(note.measure);
-          try {
-            osmd.cursor?.next();
-          } catch {}
-        }, timeCursor);
-
-        timeCursor += durSec;
-      }
-
-      // Se looping estiver ativo, agendar de novo
-      if (loopEnabled) {
-        Tone.Transport.scheduleOnce(() => {
-          Tone.Transport.stop();
-          startPlayback(); // recursivo
-        }, timeCursor + 0.1);
-      } else {
-        Tone.Transport.scheduleOnce(() => {
-          stopPlayback();
-        }, timeCursor + 0.1);
-      }
+    const loop = () => {
+      Tone.Transport.stop();
+      startPlayback(); // recursivo se loop
     };
 
-    scheduleNotes();
+    Tone.Transport.scheduleOnce(loopEnabled ? loop : stopPlayback, time + 0.1);
     Tone.Transport.start();
     setIsPlaying(true);
-  };
+  }, [osmd, loopEnabled, loopRange, bpm, volume]);
 
   const stopPlayback = () => {
     Tone.Transport.stop();
     Tone.Transport.cancel();
-    if(osmd?.cursor){
-      osmd?.cursor.reset();
-    }
+    osmd?.cursor?.reset();
     setIsPlaying(false);
     setCurrentMeasure(null);
   };
 
-  const togglePlayback = () => {
-    isPlaying ? stopPlayback() : startPlayback();
-  };
+  const togglePlayback = () => (isPlaying ? stopPlayback() : startPlayback());
 
   if (loading) {
     return (
@@ -247,94 +220,121 @@ export default function MusicSheetViewer() {
       </div>
     );
   }
-
   return (
-    <div className="p-4 space-y-4">
-      <h1 className="text-2xl font-semibold">{sheetData?.name}</h1>
-
+    <div className="p-6 space-y-6">
+      <h1 className="text-3xl font-bold text-gray-800">{sheetData?.name}</h1>
+  
       {sheetData?.fileXML ? (
-        <div>
-          <div ref={containerRef} className="border rounded p-2 bg-white shadow" />
-
-          <div className="flex flex-wrap gap-4 mt-4 items-center">
-            <Button
-              onClick={togglePlayback}
-              className={isPlaying ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
-            >
-              {isPlaying ? "Parar" : "Tocar"}
-            </Button>
-
-            <div className="text-sm text-gray-700">Compasso atual: {currentMeasure ?? "-"}</div>
-
-            <div className="flex items-center gap-2">
-              <Label className="text-sm">Volume</Label>
-              <Slider
-                min={-30}
-                max={0}
-                step={1}
-                value={[volume]}
-                onValueChange={(val) => {
-                  setVolume(val[0]);
-                  if (synthRef.current) synthRef.current.volume.value = val[0];
-                }}
-                className="w-32"
-              />
+        <>
+          <div
+            ref={containerRef}
+            className="rounded-md border bg-white shadow-sm p-2 max-w-full overflow-auto"
+          />
+  
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {/* CONTROLE PRINCIPAL */}
+            <div className="rounded-lg border p-4 shadow-sm space-y-4 bg-gray-50">
+              <h2 className="font-semibold text-lg text-gray-700">Reprodução</h2>
+  
+              <Button
+                onClick={togglePlayback}
+                className={isPlaying ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
+              >
+                {isPlaying ? "⏹ Parar" : "▶️ Tocar"}
+              </Button>
+  
+              <div className="text-sm text-gray-600">
+                Compasso atual:{" "}
+                <span className="font-semibold text-gray-900">
+                  {currentMeasure ?? "-"}
+                </span>
+              </div>
             </div>
-
-            <div className="flex items-center gap-2">
-              <Label className="text-sm">BPM</Label>
-              <Slider
-                min={40}
-                max={180}
-                step={1}
-                value={[bpm]}
-                onValueChange={(val) => {
-                  setBpm(val[0]);
-                  Tone.Transport.bpm.value = val[0];
-                }}
-                className="w-32"
-              />
+  
+            {/* CONTROLE DE ÁUDIO */}
+            <div className="rounded-lg border p-4 shadow-sm space-y-4 bg-gray-50">
+              <h2 className="font-semibold text-lg text-gray-700">Áudio</h2>
+  
+              <div className="space-y-2">
+                <Label className="text-sm">Volume</Label>
+                <Slider
+                  min={-30}
+                  max={0}
+                  step={1}
+                  value={[volume]}
+                  onValueChange={(val) => {
+                    setVolume(val[0]);
+                    if (synthRef.current) synthRef.current.volume.value = val[0];
+                  }}
+                />
+                <div className="text-xs text-muted-foreground pl-1">
+                  {volume} dB
+                </div>
+              </div>
+  
+              <div className="space-y-2">
+                <Label className="text-sm">BPM</Label>
+                <Slider
+                  min={40}
+                  max={180}
+                  step={1}
+                  value={[bpm]}
+                  onValueChange={(val) => {
+                    setBpm(val[0]);
+                    Tone.Transport.bpm.value = val[0];
+                  }}
+                />
+                <div className="text-xs text-muted-foreground pl-1">{bpm} BPM</div>
+              </div>
             </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="loop"
-                checked={loopEnabled}
-                onCheckedChange={(checked) => setLoopEnabled(!!checked)}
-              />
-              <Label htmlFor="loop">Ativar loop</Label>
-            </div>
-
-            <div className="flex items-center gap-2 w-full">
-              <Label className="text-sm w-32">Compasso inicial</Label>
-              <Slider
-                min={1}
-                max={maxMeasure}
-                step={1}
-                value={[loopRange[0]]}
-                onValueChange={(val) => setLoopRange(([_, end]) => [val[0], end])}
-                className="flex-1"
-              />
-              <span className="text-xs">{loopRange[0]}</span>
-            </div>
-
-            <div className="flex items-center gap-2 w-full">
-              <Label className="text-sm w-32">Compasso final</Label>
-              <Slider
-                min={1}
-                max={maxMeasure}
-                step={1}
-                value={[loopRange[1]]}
-                onValueChange={(val) => setLoopRange(([start]) => [start, val[0]])}
-                className="flex-1"
-              />
-              <span className="text-xs">{loopRange[1]}</span>
+  
+            {/* CONTROLE DE LOOP */}
+            <div className="rounded-lg border p-4 shadow-sm space-y-4 bg-gray-50">
+              <h2 className="font-semibold text-lg text-gray-700">Loop</h2>
+  
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="loop"
+                  checked={loopEnabled}
+                  onCheckedChange={(checked) => setLoopEnabled(!!checked)}
+                />
+                <Label htmlFor="loop">Ativar loop entre compassos</Label>
+              </div>
+  
+              <div className="space-y-2">
+                <Label className="text-sm">Compasso inicial</Label>
+                <Slider
+                  min={1}
+                  max={maxMeasure}
+                  step={1}
+                  value={[loopRange[0]]}
+                  onValueChange={(val) =>
+                    setLoopRange(([_, end]) => [val[0], end])
+                  }
+                />
+                <div className="text-xs pl-1">{loopRange[0]}</div>
+              </div>
+  
+              <div className="space-y-2">
+                <Label className="text-sm">Compasso final</Label>
+                <Slider
+                  min={1}
+                  max={maxMeasure}
+                  step={1}
+                  value={[loopRange[1]]}
+                  onValueChange={(val) =>
+                    setLoopRange(([start]) => [start, val[0]])
+                  }
+                />
+                <div className="text-xs pl-1">{loopRange[1]}</div>
+              </div>
             </div>
           </div>
-        </div>
+        </>
       ) : (
         <p className="text-gray-500">Nenhum arquivo disponível para visualização.</p>
       )}
     </div>
   );
+  
 }
