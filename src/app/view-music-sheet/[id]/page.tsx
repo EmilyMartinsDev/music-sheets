@@ -1,9 +1,12 @@
+// ⛔️ TROCAR TODO O ARQUIVO page.tsx por esse
 "use client";
 
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/src/components/ui/button";
 import { Slider } from "@/src/components/ui/slider";
+import { Checkbox } from "@/src/components/ui/checkbox";
+import { Label } from "@/src/components/ui/label";
 import { Loader } from "lucide-react";
 import { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import * as Tone from "tone";
@@ -19,6 +22,10 @@ export default function MusicSheetViewer() {
   const [volume, setVolume] = useState(-6);
   const [bpm, setBpm] = useState(90);
   const [currentMeasure, setCurrentMeasure] = useState<number | null>(null);
+
+  const [loopEnabled, setLoopEnabled] = useState(false);
+  const [loopRange, setLoopRange] = useState<[number, number]>([1, 1]);
+  const [maxMeasure, setMaxMeasure] = useState(1);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const xmlContentRef = useRef<string | null>(null);
@@ -108,47 +115,19 @@ export default function MusicSheetViewer() {
     const divisions = divisionsNode ? parseInt(divisionsNode.textContent || "1") : 1;
 
     const measures = Array.from(xmlDoc.getElementsByTagName("measure"));
-    const baseNotes: {
+    const notes: {
       pitch?: string;
       rest: boolean;
       duration: number;
       measure: number;
-    }[][] = [];
-
-    let repeatStartIndex = 0;
-    let segnoIndex: number | null = null;
-    let codaIndex: number | null = null;
-    let fineIndex: number | null = null;
-    let insertDaCapo = false;
-    let insertDalSegno = false;
-    let jumpToCoda = false;
+    }[] = [];
 
     for (let i = 0; i < measures.length; i++) {
       const measure = measures[i];
-      const notes: any[] = Array.from(measure.getElementsByTagName("note"));
       const measureNumber = parseInt(measure.getAttribute("number") || `${i + 1}`);
-      const directionText = measure.querySelector("direction-type > words")?.textContent?.toLowerCase() || "";
+      const noteEls = Array.from(measure.getElementsByTagName("note"));
 
-      if (directionText.includes("segno")) segnoIndex = i;
-      if (directionText.includes("coda")) codaIndex = i;
-      if (directionText.includes("fine")) fineIndex = i;
-      if (directionText.includes("da capo")) insertDaCapo = true;
-      if (directionText.includes("dal segno")) insertDalSegno = true;
-      if (directionText.includes("to coda")) jumpToCoda = true;
-
-      const measureNotes: {
-        pitch?: string;
-        rest: boolean;
-        duration: number;
-        measure: number;
-      }[] = [];
-
-      const repeatForward = measure.querySelector('repeat[direction="forward"]');
-      if (repeatForward) {
-        repeatStartIndex = i;
-      }
-
-      for (const note of notes) {
+      for (const note of noteEls) {
         const isRest = note.getElementsByTagName("rest").length > 0;
         const durationRaw = parseInt(note.getElementsByTagName("duration")[0]?.textContent || "1");
         const durationQuarter = durationRaw / divisions;
@@ -164,40 +143,19 @@ export default function MusicSheetViewer() {
           pitch = `${step}${accidental}${octave}`;
         }
 
-        measureNotes.push({
+        notes.push({
           pitch,
           rest: isRest,
           duration: durationQuarter,
           measure: measureNumber,
         });
       }
-
-      baseNotes.push(measureNotes);
-
-      const repeatBackward = measure.querySelector('repeat[direction="backward"]');
-      if (repeatBackward) {
-        const repeatBlock = baseNotes.slice(repeatStartIndex, i + 1);
-        baseNotes.push(...repeatBlock);
-      }
-
-      if (fineIndex === i) break;
     }
 
-    let finalNotes = baseNotes.flat();
-
-    if (insertDaCapo) {
-      finalNotes = [...finalNotes, ...baseNotes.flat()];
-    }
-
-    if (insertDalSegno && segnoIndex !== null) {
-      finalNotes = [...finalNotes, ...baseNotes.slice(segnoIndex).flat()];
-    }
-
-    if (jumpToCoda && codaIndex !== null) {
-      finalNotes = [...finalNotes, ...baseNotes.slice(codaIndex).flat()];
-    }
-
-    notesRef.current = finalNotes;
+    notesRef.current = notes;
+    const lastMeasure = Math.max(...notes.map((n) => n.measure));
+    setLoopRange([1, lastMeasure]);
+    setMaxMeasure(lastMeasure);
   };
 
   const startPlayback = async () => {
@@ -221,35 +179,48 @@ export default function MusicSheetViewer() {
       console.warn("Erro ao resetar cursor:", e);
     }
 
-    const notes = notesRef.current;
+    const allNotes = notesRef.current;
+    const [loopStart, loopEnd] = loopRange;
+    const notes = loopEnabled
+      ? allNotes.filter((n) => n.measure >= loopStart && n.measure <= loopEnd)
+      : allNotes;
+
     let now = Tone.now();
     let timeCursor = 0;
 
-    for (let i = 0; i < notes.length; i++) {
-      const note = notes[i];
-      const durSec = (60 / bpm) * note.duration;
+    const scheduleNotes = () => {
+      for (let i = 0; i < notes.length; i++) {
+        const note = notes[i];
+        const durSec = (60 / bpm) * note.duration;
 
-      Tone.Transport.scheduleOnce((t) => {
-        if (!note.rest && note.pitch) {
-          synthRef.current?.triggerAttackRelease(note.pitch, durSec, t);
-        }
+        Tone.Transport.scheduleOnce((t) => {
+          if (!note.rest && note.pitch) {
+            synthRef.current?.triggerAttackRelease(note.pitch, durSec, t);
+          }
 
-        setCurrentMeasure(note.measure);
+          setCurrentMeasure(note.measure);
+          try {
+            osmd.cursor?.next();
+          } catch {}
+        }, timeCursor);
 
-        try {
-          osmd.cursor?.next();
-        } catch (e) {
-          console.warn("Erro ao mover cursor:", e);
-        }
-      }, timeCursor);
+        timeCursor += durSec;
+      }
 
-      timeCursor += durSec;
-    }
+      // Se looping estiver ativo, agendar de novo
+      if (loopEnabled) {
+        Tone.Transport.scheduleOnce(() => {
+          Tone.Transport.stop();
+          startPlayback(); // recursivo
+        }, timeCursor + 0.1);
+      } else {
+        Tone.Transport.scheduleOnce(() => {
+          stopPlayback();
+        }, timeCursor + 0.1);
+      }
+    };
 
-    Tone.Transport.scheduleOnce(() => {
-      stopPlayback();
-    }, timeCursor + 0.1);
-
+    scheduleNotes();
     Tone.Transport.start();
     setIsPlaying(true);
   };
@@ -257,11 +228,8 @@ export default function MusicSheetViewer() {
   const stopPlayback = () => {
     Tone.Transport.stop();
     Tone.Transport.cancel();
-    try {
-      osmd?.cursor?.reset();
-      osmd?.cursor?.show();
-    } catch (e) {
-      console.warn("Erro ao resetar cursor:", e);
+    if(osmd?.cursor){
+      osmd?.cursor.reset();
     }
     setIsPlaying(false);
     setCurrentMeasure(null);
@@ -299,7 +267,7 @@ export default function MusicSheetViewer() {
             <div className="text-sm text-gray-700">Compasso atual: {currentMeasure ?? "-"}</div>
 
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">Volume</label>
+              <Label className="text-sm">Volume</Label>
               <Slider
                 min={-30}
                 max={0}
@@ -309,12 +277,12 @@ export default function MusicSheetViewer() {
                   setVolume(val[0]);
                   if (synthRef.current) synthRef.current.volume.value = val[0];
                 }}
-                className="w-40"
+                className="w-32"
               />
             </div>
 
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">BPM</label>
+              <Label className="text-sm">BPM</Label>
               <Slider
                 min={40}
                 max={180}
@@ -324,8 +292,43 @@ export default function MusicSheetViewer() {
                   setBpm(val[0]);
                   Tone.Transport.bpm.value = val[0];
                 }}
-                className="w-40"
+                className="w-32"
               />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="loop"
+                checked={loopEnabled}
+                onCheckedChange={(checked) => setLoopEnabled(!!checked)}
+              />
+              <Label htmlFor="loop">Ativar loop</Label>
+            </div>
+
+            <div className="flex items-center gap-2 w-full">
+              <Label className="text-sm w-32">Compasso inicial</Label>
+              <Slider
+                min={1}
+                max={maxMeasure}
+                step={1}
+                value={[loopRange[0]]}
+                onValueChange={(val) => setLoopRange(([_, end]) => [val[0], end])}
+                className="flex-1"
+              />
+              <span className="text-xs">{loopRange[0]}</span>
+            </div>
+
+            <div className="flex items-center gap-2 w-full">
+              <Label className="text-sm w-32">Compasso final</Label>
+              <Slider
+                min={1}
+                max={maxMeasure}
+                step={1}
+                value={[loopRange[1]]}
+                onValueChange={(val) => setLoopRange(([start]) => [start, val[0]])}
+                className="flex-1"
+              />
+              <span className="text-xs">{loopRange[1]}</span>
             </div>
           </div>
         </div>
