@@ -1,0 +1,67 @@
+🎹 1. Loop entre compassos
+Permite selecionar um trecho (ex: do compasso 5 ao 8) e repetir em loop para estudar ou ensaiar.
+
+🔧 UI:
+
+2 sliders (início e fim do loop)
+
+Checkbox "Ativar loop"
+
+🔄 2. Reprodução com metrônomo (click)
+Adiciona batidas audíveis marcando o tempo para treinos rítmicos.
+
+🔧 Implementado com Tone.MembraneSynth.
+
+👂 3. Controle de vozes/instrumentos
+Escolher quais vozes (Soprano, Baixo, Piano, Violino, etc.) devem ser reproduzidas.
+
+🔧 MusicXML já traz isso nos <score-part>
+
+🎼 4. Exibir a nota atual (letra + frequência)
+Enquanto toca, mostrar:
+
+bash
+Copiar
+Editar
+Nota: D#4 (311.13 Hz)
+📈 5. Gráfico de andamento da música
+Exibir progresso com uma timeline (como um DAW), com zoom e marcações.
+
+📤 6. Exportar áudio (render MIDI → MP3/WAV)
+Permite exportar a execução como áudio real para usar em ensaios ou apresentações.
+
+📲 7. Atalhos do teclado (play, pause, bpm)
+Espaço = play/pause
+← → = voltar/avançar compasso
++/- = aumentar ou diminuir BPM
+
+📖 8. Modo "estudo" com acompanhamento visual por nota
+A cada nota tocada, ela pisca/destaca no OSMD com uma animação suave.
+Ajuda no leitura à primeira vista.
+
+🧪 9. Validação de partitura (erros comuns)
+Avisar sobre:
+
+notas sem duração
+
+compassos incompletos
+
+repetições mal formadas
+
+🔐 10. Salvar preferências do usuário (localStorage)
+Lembrar último BPM, volume, compasso de início, etc.
+
+📈 11. Análise de tonalidade e estatísticas musicais
+Exibir:
+
+Quantidade de notas
+
+Tons dominantes
+
+Medidas com mais pausas
+
+Número total de compassos
+
+🎤 12. Microfone + comparação com nota cantada
+Para treinar canto afinado (vocal training):
+→ Ouve sua nota e diz se você está afinado.

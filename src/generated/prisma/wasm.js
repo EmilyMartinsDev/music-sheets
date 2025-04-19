@@ -130,6 +130,7 @@ exports.Prisma.MusicSheetScalarFieldEnum = {
   id: 'id',
   name: 'name',
   file: 'file',
+  fileXML: 'fileXML',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   userId: 'userId',

@@ -2582,6 +2582,7 @@ export namespace Prisma {
     id: string | null
     name: string | null
     file: string | null
+    fileXML: string | null
     createdAt: Date | null
     updatedAt: Date | null
     userId: string | null
@@ -2593,6 +2594,7 @@ export namespace Prisma {
     id: string | null
     name: string | null
     file: string | null
+    fileXML: string | null
     createdAt: Date | null
     updatedAt: Date | null
     userId: string | null
@@ -2604,6 +2606,7 @@ export namespace Prisma {
     id: number
     name: number
     file: number
+    fileXML: number
     createdAt: number
     updatedAt: number
     userId: number
@@ -2617,6 +2620,7 @@ export namespace Prisma {
     id?: true
     name?: true
     file?: true
+    fileXML?: true
     createdAt?: true
     updatedAt?: true
     userId?: true
@@ -2628,6 +2632,7 @@ export namespace Prisma {
     id?: true
     name?: true
     file?: true
+    fileXML?: true
     createdAt?: true
     updatedAt?: true
     userId?: true
@@ -2639,6 +2644,7 @@ export namespace Prisma {
     id?: true
     name?: true
     file?: true
+    fileXML?: true
     createdAt?: true
     updatedAt?: true
     userId?: true
@@ -2723,6 +2729,7 @@ export namespace Prisma {
     id: string
     name: string
     file: string
+    fileXML: string | null
     createdAt: Date
     updatedAt: Date
     userId: string
@@ -2751,6 +2758,7 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     file?: boolean
+    fileXML?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     userId?: boolean
@@ -2767,6 +2775,7 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     file?: boolean
+    fileXML?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     userId?: boolean
@@ -2781,6 +2790,7 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     file?: boolean
+    fileXML?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     userId?: boolean
@@ -2795,6 +2805,7 @@ export namespace Prisma {
     id?: boolean
     name?: boolean
     file?: boolean
+    fileXML?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     userId?: boolean
@@ -2802,7 +2813,7 @@ export namespace Prisma {
     instrumentId?: boolean
   }
 
-  export type MusicSheetOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "file" | "createdAt" | "updatedAt" | "userId" | "categoryId" | "instrumentId", ExtArgs["result"]["musicSheet"]>
+  export type MusicSheetOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "file" | "fileXML" | "createdAt" | "updatedAt" | "userId" | "categoryId" | "instrumentId", ExtArgs["result"]["musicSheet"]>
   export type MusicSheetInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     versions?: boolean | MusicSheet$versionsArgs<ExtArgs>
     user?: boolean | MusicSheet$userArgs<ExtArgs>
@@ -2833,6 +2844,7 @@ export namespace Prisma {
       id: string
       name: string
       file: string
+      fileXML: string | null
       createdAt: Date
       updatedAt: Date
       userId: string
@@ -3268,6 +3280,7 @@ export namespace Prisma {
     readonly id: FieldRef<"MusicSheet", 'String'>
     readonly name: FieldRef<"MusicSheet", 'String'>
     readonly file: FieldRef<"MusicSheet", 'String'>
+    readonly fileXML: FieldRef<"MusicSheet", 'String'>
     readonly createdAt: FieldRef<"MusicSheet", 'DateTime'>
     readonly updatedAt: FieldRef<"MusicSheet", 'DateTime'>
     readonly userId: FieldRef<"MusicSheet", 'String'>
@@ -7325,6 +7338,7 @@ export namespace Prisma {
     id: 'id',
     name: 'name',
     file: 'file',
+    fileXML: 'fileXML',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',
     userId: 'userId',
@@ -7537,6 +7551,7 @@ export namespace Prisma {
     id?: StringFilter<"MusicSheet"> | string
     name?: StringFilter<"MusicSheet"> | string
     file?: StringFilter<"MusicSheet"> | string
+    fileXML?: StringNullableFilter<"MusicSheet"> | string | null
     createdAt?: DateTimeFilter<"MusicSheet"> | Date | string
     updatedAt?: DateTimeFilter<"MusicSheet"> | Date | string
     userId?: StringFilter<"MusicSheet"> | string
@@ -7552,6 +7567,7 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     file?: SortOrder
+    fileXML?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     userId?: SortOrder
@@ -7570,6 +7586,7 @@ export namespace Prisma {
     NOT?: MusicSheetWhereInput | MusicSheetWhereInput[]
     name?: StringFilter<"MusicSheet"> | string
     file?: StringFilter<"MusicSheet"> | string
+    fileXML?: StringNullableFilter<"MusicSheet"> | string | null
     createdAt?: DateTimeFilter<"MusicSheet"> | Date | string
     updatedAt?: DateTimeFilter<"MusicSheet"> | Date | string
     userId?: StringFilter<"MusicSheet"> | string
@@ -7585,6 +7602,7 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     file?: SortOrder
+    fileXML?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     userId?: SortOrder
@@ -7602,6 +7620,7 @@ export namespace Prisma {
     id?: StringWithAggregatesFilter<"MusicSheet"> | string
     name?: StringWithAggregatesFilter<"MusicSheet"> | string
     file?: StringWithAggregatesFilter<"MusicSheet"> | string
+    fileXML?: StringNullableWithAggregatesFilter<"MusicSheet"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"MusicSheet"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"MusicSheet"> | Date | string
     userId?: StringWithAggregatesFilter<"MusicSheet"> | string
@@ -7905,6 +7924,7 @@ export namespace Prisma {
     id?: string
     name: string
     file: string
+    fileXML?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     versions?: MusicSheetVersionCreateNestedManyWithoutMusicSheetInput
@@ -7917,6 +7937,7 @@ export namespace Prisma {
     id?: string
     name: string
     file: string
+    fileXML?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     userId: string
@@ -7929,6 +7950,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     file?: StringFieldUpdateOperationsInput | string
+    fileXML?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     versions?: MusicSheetVersionUpdateManyWithoutMusicSheetNestedInput
@@ -7941,6 +7963,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     file?: StringFieldUpdateOperationsInput | string
+    fileXML?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userId?: StringFieldUpdateOperationsInput | string
@@ -7953,6 +7976,7 @@ export namespace Prisma {
     id?: string
     name: string
     file: string
+    fileXML?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     userId: string
@@ -7964,6 +7988,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     file?: StringFieldUpdateOperationsInput | string
+    fileXML?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -7972,6 +7997,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     file?: StringFieldUpdateOperationsInput | string
+    fileXML?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userId?: StringFieldUpdateOperationsInput | string
@@ -8374,6 +8400,7 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     file?: SortOrder
+    fileXML?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     userId?: SortOrder
@@ -8385,6 +8412,7 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     file?: SortOrder
+    fileXML?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     userId?: SortOrder
@@ -8396,6 +8424,7 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     file?: SortOrder
+    fileXML?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     userId?: SortOrder
@@ -9212,6 +9241,7 @@ export namespace Prisma {
     id?: string
     name: string
     file: string
+    fileXML?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     versions?: MusicSheetVersionCreateNestedManyWithoutMusicSheetInput
@@ -9223,6 +9253,7 @@ export namespace Prisma {
     id?: string
     name: string
     file: string
+    fileXML?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     categoryId?: string | null
@@ -9353,6 +9384,7 @@ export namespace Prisma {
     id?: StringFilter<"MusicSheet"> | string
     name?: StringFilter<"MusicSheet"> | string
     file?: StringFilter<"MusicSheet"> | string
+    fileXML?: StringNullableFilter<"MusicSheet"> | string | null
     createdAt?: DateTimeFilter<"MusicSheet"> | Date | string
     updatedAt?: DateTimeFilter<"MusicSheet"> | Date | string
     userId?: StringFilter<"MusicSheet"> | string
@@ -9668,6 +9700,7 @@ export namespace Prisma {
     id?: string
     name: string
     file: string
+    fileXML?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     versions?: MusicSheetVersionCreateNestedManyWithoutMusicSheetInput
@@ -9679,6 +9712,7 @@ export namespace Prisma {
     id?: string
     name: string
     file: string
+    fileXML?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     userId: string
@@ -9830,6 +9864,7 @@ export namespace Prisma {
     id?: string
     name: string
     file: string
+    fileXML?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     versions?: MusicSheetVersionCreateNestedManyWithoutMusicSheetInput
@@ -9841,6 +9876,7 @@ export namespace Prisma {
     id?: string
     name: string
     file: string
+    fileXML?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     userId: string
@@ -9992,6 +10028,7 @@ export namespace Prisma {
     id?: string
     name: string
     file: string
+    fileXML?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     user?: UserCreateNestedOneWithoutMusicSheetsInput
@@ -10003,6 +10040,7 @@ export namespace Prisma {
     id?: string
     name: string
     file: string
+    fileXML?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     userId: string
@@ -10105,6 +10143,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     file?: StringFieldUpdateOperationsInput | string
+    fileXML?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneWithoutMusicSheetsNestedInput
@@ -10116,6 +10155,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     file?: StringFieldUpdateOperationsInput | string
+    fileXML?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userId?: StringFieldUpdateOperationsInput | string
@@ -10220,6 +10260,7 @@ export namespace Prisma {
     id?: string
     name: string
     file: string
+    fileXML?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     categoryId?: string | null
@@ -10256,6 +10297,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     file?: StringFieldUpdateOperationsInput | string
+    fileXML?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     versions?: MusicSheetVersionUpdateManyWithoutMusicSheetNestedInput
@@ -10267,6 +10309,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     file?: StringFieldUpdateOperationsInput | string
+    fileXML?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     categoryId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -10278,6 +10321,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     file?: StringFieldUpdateOperationsInput | string
+    fileXML?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     categoryId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -10422,6 +10466,7 @@ export namespace Prisma {
     id?: string
     name: string
     file: string
+    fileXML?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     userId: string
@@ -10444,6 +10489,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     file?: StringFieldUpdateOperationsInput | string
+    fileXML?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     versions?: MusicSheetVersionUpdateManyWithoutMusicSheetNestedInput
@@ -10455,6 +10501,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     file?: StringFieldUpdateOperationsInput | string
+    fileXML?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userId?: StringFieldUpdateOperationsInput | string
@@ -10466,6 +10513,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     file?: StringFieldUpdateOperationsInput | string
+    fileXML?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userId?: StringFieldUpdateOperationsInput | string
@@ -10512,6 +10560,7 @@ export namespace Prisma {
     id?: string
     name: string
     file: string
+    fileXML?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     userId: string
@@ -10534,6 +10583,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     file?: StringFieldUpdateOperationsInput | string
+    fileXML?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     versions?: MusicSheetVersionUpdateManyWithoutMusicSheetNestedInput
@@ -10545,6 +10595,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     file?: StringFieldUpdateOperationsInput | string
+    fileXML?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userId?: StringFieldUpdateOperationsInput | string
@@ -10556,6 +10607,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     file?: StringFieldUpdateOperationsInput | string
+    fileXML?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     userId?: StringFieldUpdateOperationsInput | string

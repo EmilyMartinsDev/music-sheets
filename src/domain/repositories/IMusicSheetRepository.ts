@@ -5,5 +5,7 @@ export interface IMusicSheetRepository {
     create(data: Partial<MusicSheet>): Promise<MusicSheet>;
     update(id: string, data: Partial<MusicSheet>): Promise<MusicSheet>;
     delete(id: string): Promise<void>;
-    getAll(): Promise<MusicSheet[]>;
+ getAll(params?: { page?: number; limit?: number; query?: string }): Promise<{ items: MusicSheet[]; totalCount: number }>;
+
+
 }

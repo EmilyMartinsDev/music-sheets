@@ -2,7 +2,7 @@ import { IMusicSheetRepository } from "@/src/domain/repositories/IMusicSheetRepo
 import { MusicSheet } from "@/src/domain/entities/MusicSheet";
 
 export class MusicSheetService {
-    constructor(private readonly musicSheetRepository: IMusicSheetRepository) {}
+    constructor(private readonly musicSheetRepository: IMusicSheetRepository) { }
 
     async getMusicSheetById(id: string): Promise<MusicSheet | null> {
         try {
@@ -93,12 +93,28 @@ export class MusicSheetService {
         }
     }
 
-    async getAllMusicSheets(): Promise<MusicSheet[]> {
-        try {
-            return await this.musicSheetRepository.getAll();
-        } catch (error) {
-            console.error("Error in getAllMusicSheets:", error);
-            throw error;
-        }
-    }
+    async getAllMusicSheets(
+        page = 1,
+        limit = 10,
+        query = ""
+      ): Promise<{
+        items: MusicSheet[];
+        totalCount: number;
+        page: number;
+        totalPages: number;
+      }> {
+        const { items, totalCount } = await this.musicSheetRepository.getAll({
+          page,
+          limit,
+          query,
+        });
+      
+        return {
+          items,
+          totalCount,
+          page,
+          totalPages: Math.ceil(totalCount / limit),
+        };
+      }
+      
 }

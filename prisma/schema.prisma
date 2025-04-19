@@ -31,6 +31,7 @@ model MusicSheet{
   id String @id @default(uuid())
   name String
   file String
+  fileXML String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   versions MusicSheetVersion[]

@@ -31,6 +31,7 @@ model MusicSheet {
   id           String                @id @default(uuid())
   name         String
   file         String
+  fileXML      String?
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
   versions     MusicSheetVersion[]
@@ -43,34 +44,40 @@ model MusicSheet {
 }
 
 model MusicSheetCategory {
-  id          String       @id @default(uuid())
-  name        String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  musicSheets MusicSheet[]
-  user        User?        @relation(fields: [userId], references: [id])
-  userId      String?
+  id                 String              @id @default(uuid())
+  name               String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  musicSheets        MusicSheet[]
+  user               User?               @relation(fields: [userId], references: [id])
+  userId             String?
+  musicSheetVersions MusicSheetVersion[]
 }
 
 model MusicSheetInstrument {
-  id          String       @id @default(uuid())
-  name        String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  musicSheets MusicSheet[]
-  user        User?        @relation(fields: [userId], references: [id])
-  userId      String?
+  id                 String              @id @default(uuid())
+  name               String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  musicSheets        MusicSheet[]
+  user               User?               @relation(fields: [userId], references: [id])
+  userId             String?
+  musicSheetVersions MusicSheetVersion[]
 }
 
 model MusicSheetVersion {
-  id           String      @id @default(uuid())
+  id           String                @id @default(uuid())
   name         String
   file         String
   action       String
-  musicSheet   MusicSheet? @relation(fields: [musicSheetId], references: [id])
+  musicSheet   MusicSheet?           @relation(fields: [musicSheetId], references: [id])
   musicSheetId String?
-  user         User?       @relation(fields: [userId], references: [id])
+  user         User?                 @relation(fields: [userId], references: [id])
   userId       String?
-  createdAt    DateTime    @default(now())
+  createdAt    DateTime              @default(now())
   version      Int
+  categoryId   String?
+  instrumentId String?
+  category     MusicSheetCategory?   @relation(fields: [categoryId], references: [id])
+  instrument   MusicSheetInstrument? @relation(fields: [instrumentId], references: [id])
 }
