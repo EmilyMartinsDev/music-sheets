@@ -2,18 +2,25 @@ import { musicSheetService } from "@/src/config/dependencies";
 import { NextResponse } from "next/server";
 import { supabase } from "@/src/config/supabase";
 
-function bufferToDataURL(buffer: Buffer, mimeType: string): string {
-  return `data:${mimeType};base64,${buffer.toString("base64")}`;
-}
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const musicSheets = await musicSheetService.getAllMusicSheets();
-    return NextResponse.json(musicSheets, { status: 200 });
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "10", 10);
+    const query = searchParams.get("q") || "";
+
+    const result = await musicSheetService.getAllMusicSheets(page, limit, query);
+
+    return NextResponse.json(result, { status: 200 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to fetch music sheets" }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || "Failed to fetch music sheets" },
+      { status: 500 }
+    );
   }
 }
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();

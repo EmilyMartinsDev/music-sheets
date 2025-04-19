@@ -60,10 +60,42 @@ export class PrismaMusicSheetRepository implements IMusicSheetRepository {
         await this.prisma.musicSheet.delete({ where: { id } });
     }
 
-    async getAll(): Promise<MusicSheet[]> {
-        const musicSheets = await this.prisma.musicSheet.findMany({
-            include: { category: true, instrument: true, versions: true },
-        });
-        return musicSheets.map((sheet:any) => new MusicSheet(sheet));
-    }
+    async getAll(params?: { page?: number; limit?: number; query?: string }): Promise<{ items: MusicSheet[]; totalCount: number }> {
+        const page = params?.page || 1;
+        const limit = params?.limit || 10;
+        const skip = (page - 1) * limit;
+        const query = params?.query?.toLowerCase() || "";
+      
+        const whereClause = query
+          ? {
+              name: {
+                contains: query,
+                mode: "insensitive", // ignora maiúsculas/minúsculas
+              },
+            }
+          : {};
+      
+        const [data, totalCount] = await this.prisma.$transaction([
+          this.prisma.musicSheet.findMany({
+            skip,
+            take: limit,
+            where: whereClause,
+            include: {
+              category: true,
+              instrument: true,
+              versions: true,
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+          }),
+          this.prisma.musicSheet.count({ where: whereClause }),
+        ]);
+      
+        return {
+          items: data.map((sheet: any) => new MusicSheet(sheet)),
+          totalCount,
+        };
+      }
+      
 }

@@ -1,4 +1,3 @@
-// ⛔️ TROCAR TODO O ARQUIVO page.tsx por esse
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -12,6 +11,9 @@ import { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import * as Tone from "tone";
 import JSZip from "jszip";
 
+import { useMusicSheets } from "@/src/hooks/useMusicSheets";
+import { MusicSheet } from "@/src/domain/entities/MusicSheet";
+import { MusicSheetConversionService } from "@/src/application/services/MusicSheetConversionService";
 
 interface Note {
   pitch?: string;
@@ -20,9 +22,65 @@ interface Note {
   measure: number;
 }
 
+const parseNotesFromXML = (xml: string): { notes: Note[]; max: number } => {
+  const parser = new DOMParser();
+  const xmlDoc = parser.parseFromString(xml, "application/xml");
+  const divisions = parseInt(xmlDoc.querySelector("divisions")?.textContent || "1");
+
+  const notes: Note[] = [];
+  const measures = Array.from(xmlDoc.getElementsByTagName("measure"));
+
+  for (const [index, measure] of measures.entries()) {
+    const measureNumber = parseInt(measure.getAttribute("number") || `${index + 1}`);
+    const noteEls = Array.from(measure.getElementsByTagName("note"));
+
+    for (const noteEl of noteEls) {
+      const isRest = noteEl.getElementsByTagName("rest").length > 0;
+      const duration = parseInt(noteEl.getElementsByTagName("duration")[0]?.textContent || "1");
+      const durationQuarter = duration / divisions;
+
+      let pitch;
+      if (!isRest) {
+        const step = noteEl.getElementsByTagName("step")[0]?.textContent || "";
+        const octave = noteEl.getElementsByTagName("octave")[0]?.textContent || "";
+        const alter = noteEl.getElementsByTagName("alter")[0]?.textContent;
+        const accidental = alter === "1" ? "#" : alter === "-1" ? "b" : "";
+        pitch = `${step}${accidental}${octave}`;
+      }
+
+      notes.push({ pitch, rest: isRest, duration: durationQuarter, measure: measureNumber });
+    }
+  }
+
+  return { notes, max: Math.max(...notes.map((n) => n.measure)) };
+};
+
+const getXMLContent = async (fileURL: string): Promise<string> => {
+  const response = await fetch(fileURL);
+  if (!response.ok) throw new Error("Arquivo não encontrado");
+
+  if (fileURL.toLowerCase().endsWith(".mxl")) {
+    const buffer = await response.arrayBuffer();
+    const zip = await JSZip.loadAsync(buffer);
+    const xmlFile = Object.values(zip.files).find((file) =>
+      file.name.toLowerCase().endsWith(".xml")
+    );
+    if (!xmlFile) throw new Error("Nenhum .xml encontrado dentro do .mxl");
+
+    return await xmlFile.async("text");
+  }
+
+  const text = await response.text();
+  if (!text.includes("<score-partwise")) {
+    throw new Error("Documento XML inválido para MusicXML");
+  }
+
+  return text;
+};
+
 export default function MusicSheetViewer() {
   const { id } = useParams();
-  const [sheetData, setSheetData] = useState<any>(null);
+  const [sheetData, setSheetData] = useState<MusicSheet | null>(null);
   const [loading, setLoading] = useState(true);
   const [osmd, setOsmd] = useState<OpenSheetMusicDisplay | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -33,18 +91,33 @@ export default function MusicSheetViewer() {
   const [loopRange, setLoopRange] = useState<[number, number]>([1, 1]);
   const [maxMeasure, setMaxMeasure] = useState(1);
 
+  const SECRET_KEY = process.env.NEXT_PUBLIC_SECRET_KEY!;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const xmlContentRef = useRef<string | null>(null);
   const notesRef = useRef<Note[]>([]);
   const synthRef = useRef<Tone.PolySynth | null>(null);
 
-  // === FETCH PARTITURA ===
+  const { fetchMusicSheet, updateMusicSheet, fetchMusicSheetPdf } = useMusicSheets();
+
   useEffect(() => {
-    const fetchSheetData = async () => {
+    const fetchAndConvert = async () => {
       try {
-        const res = await fetch(`/api/musicsheets/${id}`);
-        const data = await res.json();
-        setSheetData(data);
+        const data = await fetchMusicSheet(id);
+        if (!data) throw new Error("Partitura não encontrada");
+        if (!data.file) throw new Error("Arquivo PDF não encontrado");
+
+        if (!data.fileXML) {
+          await MusicSheetConversionService.convertPDFtoMXL(
+            data.file,
+            id,
+            SECRET_KEY,
+            fetchMusicSheetPdf,
+            updateMusicSheet
+          );
+        }
+
+        const updated = await fetchMusicSheet(id);
+        setSheetData(updated);
       } catch (err) {
         console.error("Erro ao carregar partitura:", err);
       } finally {
@@ -52,109 +125,53 @@ export default function MusicSheetViewer() {
       }
     };
 
-    fetchSheetData();
+    fetchAndConvert();
   }, [id]);
-
-  // === LOAD XML ===
   useEffect(() => {
     if (!sheetData?.fileXML || !containerRef.current) return;
 
-    const loadScore = async () => {
+    const renderScore = async () => {
       try {
-        const xml = await getXMLContent(sheetData.fileXML);
+        const fileXML = sheetData.fileXML!;
+        const xml = await getXMLContent(fileXML);
         xmlContentRef.current = xml;
 
-        if (!containerRef.current) {
-          throw new Error("Container element is not available");
-        }
 
-        const osmdInstance = new OpenSheetMusicDisplay(containerRef.current, {
+        const osmdInstance = new OpenSheetMusicDisplay(containerRef.current!, {
           backend: "svg",
           drawTitle: true,
-          cursorsOptions: {
-            type: 1,
-            follow: true,
-            color: "#00ff55",
-          },
+          autoResize: true,
+          cursorsOptions: [
+            {
+              type: 1,
+              follow: true,
+              color: "#00ff55",
+              alpha: 1, 
+            },
+          ],
         });
 
+
         await osmdInstance.load(xml);
-        containerRef.current.innerHTML = ""; // limpar render antigo
+        containerRef.current!.innerHTML = "";
         await osmdInstance.render();
         osmdInstance.cursor?.reset();
         osmdInstance.cursor?.show();
-
         setOsmd(osmdInstance);
-        parseNotes(xml);
+
+        const { notes, max } = parseNotesFromXML(xml);
+        notesRef.current = notes;
+        setLoopRange([1, max]);
+        setMaxMeasure(max);
       } catch (err) {
         console.error("Erro ao renderizar partitura:", err);
       }
     };
 
-    loadScore();
+    renderScore();
   }, [sheetData]);
 
-  const getXMLContent = async (fileURL: string): Promise<string> => {
-    const response = await fetch(fileURL);
-    if (!response.ok) throw new Error("Arquivo não encontrado");
 
-    if (fileURL.toLowerCase().endsWith(".mxl")) {
-      const buffer = await response.arrayBuffer();
-      const zip = await JSZip.loadAsync(buffer);
-      const xmlFile = Object.values(zip.files).find((file) =>
-        file.name.toLowerCase().endsWith(".xml")
-      );
-      if (!xmlFile) throw new Error("Nenhum .xml encontrado dentro do .mxl");
-
-      return await xmlFile.async("text");
-    }
-
-    const text = await response.text();
-    if (!text.includes("<score-partwise")) {
-      throw new Error("Documento XML inválido para MusicXML");
-    }
-
-    return text;
-  };
-
-  // === PARSE MUSICXML NOTES ===
-  const parseNotes = (xml: string) => {
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(xml, "application/xml");
-    const divisions = parseInt(xmlDoc.querySelector("divisions")?.textContent || "1");
-
-    const notes: Note[] = [];
-
-    const measures = Array.from(xmlDoc.getElementsByTagName("measure"));
-    for (const [index, measure] of measures.entries()) {
-      const measureNumber = parseInt(measure.getAttribute("number") || `${index + 1}`);
-      const noteEls = Array.from(measure.getElementsByTagName("note"));
-
-      for (const noteEl of noteEls) {
-        const isRest = noteEl.getElementsByTagName("rest").length > 0;
-        const duration = parseInt(noteEl.getElementsByTagName("duration")[0]?.textContent || "1");
-        const durationQuarter = duration / divisions;
-
-        let pitch;
-        if (!isRest) {
-          const step = noteEl.getElementsByTagName("step")[0]?.textContent || "";
-          const octave = noteEl.getElementsByTagName("octave")[0]?.textContent || "";
-          const alter = noteEl.getElementsByTagName("alter")[0]?.textContent;
-          const accidental = alter === "1" ? "#" : alter === "-1" ? "b" : "";
-          pitch = `${step}${accidental}${octave}`;
-        }
-
-        notes.push({ pitch, rest: isRest, duration: durationQuarter, measure: measureNumber });
-      }
-    }
-
-    notesRef.current = notes;
-    const last = Math.max(...notes.map((n) => n.measure));
-    setLoopRange([1, last]);
-    setMaxMeasure(last);
-  };
-
-  // === PLAYBACK ===
   const startPlayback = useCallback(async () => {
     if (!osmd || !xmlContentRef.current) return;
 
@@ -194,7 +211,7 @@ export default function MusicSheetViewer() {
 
     const loop = () => {
       Tone.Transport.stop();
-      startPlayback(); // recursivo se loop
+      startPlayback();
     };
 
     Tone.Transport.scheduleOnce(loopEnabled ? loop : stopPlayback, time + 0.1);
@@ -220,41 +237,37 @@ export default function MusicSheetViewer() {
       </div>
     );
   }
+
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-3xl font-bold text-gray-800">{sheetData?.name}</h1>
-  
+
       {sheetData?.fileXML ? (
         <>
-          <div
-            ref={containerRef}
-            className="rounded-md border bg-white shadow-sm p-2 max-w-full overflow-auto"
-          />
-  
+          <div ref={containerRef} className="rounded-md border bg-white shadow-sm p-2 max-w-full overflow-auto" />
+
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {/* CONTROLE PRINCIPAL */}
             <div className="rounded-lg border p-4 shadow-sm space-y-4 bg-gray-50">
               <h2 className="font-semibold text-lg text-gray-700">Reprodução</h2>
-  
+
               <Button
                 onClick={togglePlayback}
                 className={isPlaying ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
               >
                 {isPlaying ? "⏹ Parar" : "▶️ Tocar"}
               </Button>
-  
+
               <div className="text-sm text-gray-600">
                 Compasso atual:{" "}
-                <span className="font-semibold text-gray-900">
-                  {currentMeasure ?? "-"}
-                </span>
+                <span className="font-semibold text-gray-900">{currentMeasure ?? "-"}</span>
               </div>
             </div>
-  
+
             {/* CONTROLE DE ÁUDIO */}
             <div className="rounded-lg border p-4 shadow-sm space-y-4 bg-gray-50">
               <h2 className="font-semibold text-lg text-gray-700">Áudio</h2>
-  
+
               <div className="space-y-2">
                 <Label className="text-sm">Volume</Label>
                 <Slider
@@ -267,11 +280,9 @@ export default function MusicSheetViewer() {
                     if (synthRef.current) synthRef.current.volume.value = val[0];
                   }}
                 />
-                <div className="text-xs text-muted-foreground pl-1">
-                  {volume} dB
-                </div>
+                <div className="text-xs text-muted-foreground pl-1">{volume} dB</div>
               </div>
-  
+
               <div className="space-y-2">
                 <Label className="text-sm">BPM</Label>
                 <Slider
@@ -287,11 +298,11 @@ export default function MusicSheetViewer() {
                 <div className="text-xs text-muted-foreground pl-1">{bpm} BPM</div>
               </div>
             </div>
-  
+
             {/* CONTROLE DE LOOP */}
             <div className="rounded-lg border p-4 shadow-sm space-y-4 bg-gray-50">
               <h2 className="font-semibold text-lg text-gray-700">Loop</h2>
-  
+
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="loop"
@@ -300,7 +311,7 @@ export default function MusicSheetViewer() {
                 />
                 <Label htmlFor="loop">Ativar loop entre compassos</Label>
               </div>
-  
+
               <div className="space-y-2">
                 <Label className="text-sm">Compasso inicial</Label>
                 <Slider
@@ -308,13 +319,11 @@ export default function MusicSheetViewer() {
                   max={maxMeasure}
                   step={1}
                   value={[loopRange[0]]}
-                  onValueChange={(val) =>
-                    setLoopRange(([_, end]) => [val[0], end])
-                  }
+                  onValueChange={(val) => setLoopRange(([_, end]) => [val[0], end])}
                 />
                 <div className="text-xs pl-1">{loopRange[0]}</div>
               </div>
-  
+
               <div className="space-y-2">
                 <Label className="text-sm">Compasso final</Label>
                 <Slider
@@ -322,9 +331,7 @@ export default function MusicSheetViewer() {
                   max={maxMeasure}
                   step={1}
                   value={[loopRange[1]]}
-                  onValueChange={(val) =>
-                    setLoopRange(([start]) => [start, val[0]])
-                  }
+                  onValueChange={(val) => setLoopRange(([start]) => [start, val[0]])}
                 />
                 <div className="text-xs pl-1">{loopRange[1]}</div>
               </div>
@@ -336,5 +343,4 @@ export default function MusicSheetViewer() {
       )}
     </div>
   );
-  
 }

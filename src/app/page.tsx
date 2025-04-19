@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
-import { Search, Plus, Trash2, FileText } from "lucide-react";
+import { Search, Plus, Trash2, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/src/components/ui/dialog";
 import CustomTable from "@/src/components/custom-table";
 import CategoryBadge from "@/src/components/category-badge";
@@ -16,15 +16,19 @@ import { MusicSheetVersion } from "../domain/entities/MusicSheetVersion";
 import ConfirmationDialog from "@/src/components/confirmation-dialog";
 import { useRouter } from "next/navigation";
 
+const PAGE_SIZE = 10;
+
 export default function Home() {
   const router = useRouter();
-  const { 
-    musicSheets, 
-    loading, 
-    error, 
-    fetchMusicSheets, 
-    createMusicSheet, 
-    deleteMusicSheet 
+  const {
+    musicSheets,
+    loading,
+    error,
+    fetchMusicSheets,
+    deleteMusicSheet,
+    convertMusicSheetToMXL,
+    totalPages,
+    currentPage,
   } = useMusicSheets();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -33,6 +37,17 @@ export default function Home() {
   const [selectedVersion, setSelectedVersion] = useState<MusicSheetVersion | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [sheetToDelete, setSheetToDelete] = useState<string | null>(null);
+  const [isDownloadOpen, setIsDownloadOpen] = useState(false);
+  const [sheetToDownload, setSheetToDownload] = useState<MusicSheet | null>(null);
+  const [isConvertingMxl, setIsConvertingMxl] = useState(false);
+
+
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    fetchMusicSheets(page, PAGE_SIZE);
+  }, [page]);
+  
 
   const handleRowClick = (sheet: MusicSheet) => {
     setSelectedSheet(sheet);
@@ -40,15 +55,8 @@ export default function Home() {
     setIsFormOpen(true);
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.info("Search functionality is not implemented yet.");
-  };
-
-  const handleVersionClick = (version: MusicSheetVersion) => {
-    setSelectedVersion(version);
-    setSelectedSheet(null);
-    setIsFormOpen(true);
+  const handleViewClick = (sheetId: string) => {
+    router.push(`/view-music-sheet/${sheetId}`);
   };
 
   const handleDelete = async () => {
@@ -56,23 +64,14 @@ export default function Home() {
       await deleteMusicSheet(sheetToDelete);
       setSheetToDelete(null);
       setIsConfirmOpen(false);
+      fetchMusicSheets(page, PAGE_SIZE); // reload current page
     }
   };
 
-  const handleViewClick = (sheetId: string) => {
-    router.push(`/view-music-sheet/${sheetId}`);
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await fetchMusicSheets(page, PAGE_SIZE, searchQuery);
   };
-
-useEffect(() => {
-  fetchMusicSheets()
-}
-, []);
-
-  if (loading) return <Loading />;
-  if (error) {
-    toast.error(error);
-    return <p>Error: {error}</p>;
-  }
 
   const columns = [
     {
@@ -94,31 +93,6 @@ useEffect(() => {
       sortable: true,
     },
     {
-      id: "file",
-      header: "Arquivo",
-      accessor: (sheet: MusicSheet) => (
-        <div className="flex items-center">
-          {sheet.file ? (
-            <>
-              <FileText className="h-4 w-4 text-blue-600 mr-2" />
-              <span
-                className="text-sm text-blue-600 hover:underline cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation(); // Evita abrir o modal de edição ao clicar no arquivo
-                  window.open(sheet.file, "_blank"); // Abre a URL do arquivo em uma nova aba
-                }}
-              >
-                Baixar arquivo
-              </span>
-            </>
-          ) : (
-            <span className="text-sm text-gray-500">Sem arquivo</span>
-          )}
-        </div>
-      ),
-      sortable: false,
-    },
-    {
       id: "createdAt",
       header: "Data de Criação",
       accessor: (sheet: MusicSheet) => new Date(sheet.createdAt).toLocaleDateString("pt-BR"),
@@ -129,35 +103,16 @@ useEffect(() => {
       header: "Ações",
       accessor: (sheet: MusicSheet) => (
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleRowClick(sheet);
-            }}
-          >
+          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleRowClick(sheet); }}>
             Editar
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleViewClick(sheet.id);
-            }}
-          >
+          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewClick(sheet.id); }}>
             Visualizar
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSheetToDelete(sheet.id);
-              setIsConfirmOpen(true);
-            }}
-          >
+          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setSheetToDownload(sheet); setIsDownloadOpen(true); }}>
+            Download
+          </Button>
+          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSheetToDelete(sheet.id); setIsConfirmOpen(true); }}>
             <Trash2 className="h-4 w-4 text-red-600" />
           </Button>
         </div>
@@ -165,6 +120,12 @@ useEffect(() => {
       sortable: false,
     },
   ];
+
+  if (loading) return <Loading />;
+  if (error) {
+    toast.error(error);
+    return <p className="text-red-500">Erro: {error}</p>;
+  }
 
   return (
     <main className="container mx-auto py-8 px-4">
@@ -206,6 +167,31 @@ useEffect(() => {
         hoverable
       />
 
+      {/* Paginação */}
+      <div className="flex justify-end items-center gap-2 mt-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage((p) => Math.max(p - 1, 1))}
+          disabled={page === 1}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Anterior
+        </Button>
+        <span className="text-sm">
+          Página {page} de {totalPages}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+          disabled={page === totalPages}
+        >
+          Próxima
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
@@ -216,6 +202,63 @@ useEffect(() => {
             versionData={selectedVersion}
             onClose={() => setIsFormOpen(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDownloadOpen} onOpenChange={setIsDownloadOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Download de Partitura</DialogTitle>
+          </DialogHeader>
+
+          {sheetToDownload && (
+            <div className="flex flex-col gap-4">
+              <Button
+                onClick={() => {
+                  if (sheetToDownload.file) {
+                    window.open(sheetToDownload.file, "_blank");
+                  } else {
+                    toast.warn("PDF não disponível.");
+                  }
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Baixar PDF
+              </Button>
+
+              {sheetToDownload.fileXML ? (
+                <Button
+                  onClick={() => {
+                    window.open(sheetToDownload.fileXML!, "_blank");
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Baixar MXL
+                </Button>
+              ) : (
+                <Button
+                  disabled={isConvertingMxl}
+                  onClick={async () => {
+                    try {
+                      if (!sheetToDownload) return;
+                      setIsConvertingMxl(true);
+                      await convertMusicSheetToMXL(sheetToDownload);
+                      toast.success("Partitura convertida com sucesso!");
+                      setIsDownloadOpen(false);
+                    } catch (err: any) {
+                      toast.error("Erro na conversão.");
+                    } finally {
+                      setIsConvertingMxl(false);
+                    }
+                  }}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white flex items-center justify-center gap-2"
+                >
+                  {isConvertingMxl && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {isConvertingMxl ? "Convertendo..." : "Converter para MXL"}
+                </Button>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
