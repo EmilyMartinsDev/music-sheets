@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { Search, Plus, Trash2 } from "lucide-react";
@@ -39,6 +39,10 @@ export default function CategoriesPage() {
     }
   };
 
+  useEffect(() => {
+    fetchCategories(); // Carrega os instrumentos ao montar o componente
+  }
+    , []);
   const columns = [
     {
       id: "name",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { Search, Plus, Trash2 } from "lucide-react";
@@ -24,6 +24,11 @@ export default function InstrumentsPage() {
     setSelectedInstrument(instrument);
     setIsFormOpen(true);
   };
+
+  useEffect(() => {
+    fetchInstruments(); // Carrega os instrumentos ao montar o componente
+  }
+    , []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

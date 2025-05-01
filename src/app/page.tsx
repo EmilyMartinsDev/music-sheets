@@ -102,14 +102,11 @@ export default function Home() {
       id: "actions",
       header: "Ações",
       accessor: (sheet: MusicSheet) => (
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleRowClick(sheet); }}>
-            Editar
-          </Button>
-          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewClick(sheet.id); }}>
+        <div className="flex gap-5">
+          <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); handleViewClick(sheet.id); }}>
             Visualizar
           </Button>
-          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setSheetToDownload(sheet); setIsDownloadOpen(true); }}>
+          <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); setSheetToDownload(sheet); setIsDownloadOpen(true); }}>
             Download
           </Button>
           <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSheetToDelete(sheet.id); setIsConfirmOpen(true); }}>
