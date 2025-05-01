@@ -239,37 +239,44 @@ export default function MusicSheetViewer() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-3xl font-bold text-gray-800">{sheetData?.name}</h1>
-
+    <div className="p-8 space-y-8 bg-gradient-to-b from-gray-50 to-white min-h-screen">
+      <h1 className="text-4xl font-extrabold text-zinc-800 tracking-tight">{sheetData?.name}</h1>
+  
       {sheetData?.fileXML ? (
         <>
-          <div ref={containerRef} className="rounded-md border bg-white shadow-sm p-2 max-w-full overflow-auto" />
-
+          <div
+            ref={containerRef}
+            className="rounded-xl border bg-white shadow-lg p-4 max-w-full overflow-auto ring-1 ring-gray-200"
+          />
+  
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {/* CONTROLE PRINCIPAL */}
-            <div className="rounded-lg border p-4 shadow-sm space-y-4 bg-gray-50">
-              <h2 className="font-semibold text-lg text-gray-700">Reprodução</h2>
-
+            {/* PLAYER CONTROLS */}
+            <div className="rounded-xl border bg-white p-6 shadow-md space-y-5">
+              <h2 className="text-xl font-semibold text-zinc-700">🎵 Reprodução</h2>
+  
               <Button
                 onClick={togglePlayback}
-                className={isPlaying ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
+                className={`w-full text-white font-semibold ${
+                  isPlaying
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-green-600 hover:bg-green-700"
+                }`}
               >
                 {isPlaying ? "⏹ Parar" : "▶️ Tocar"}
               </Button>
-
-              <div className="text-sm text-gray-600">
+  
+              <div className="text-sm text-gray-500">
                 Compasso atual:{" "}
-                <span className="font-semibold text-gray-900">{currentMeasure ?? "-"}</span>
+                <span className="text-base font-medium text-gray-900">{currentMeasure ?? "-"}</span>
               </div>
             </div>
-
-            {/* CONTROLE DE ÁUDIO */}
-            <div className="rounded-lg border p-4 shadow-sm space-y-4 bg-gray-50">
-              <h2 className="font-semibold text-lg text-gray-700">Áudio</h2>
-
+  
+            {/* AUDIO CONTROLS */}
+            <div className="rounded-xl border bg-white p-6 shadow-md space-y-6">
+              <h2 className="text-xl font-semibold text-zinc-700">🎚️ Áudio</h2>
+  
               <div className="space-y-2">
-                <Label className="text-sm">Volume</Label>
+                <Label className="text-sm">🔊 Volume</Label>
                 <Slider
                   min={-30}
                   max={0}
@@ -280,11 +287,11 @@ export default function MusicSheetViewer() {
                     if (synthRef.current) synthRef.current.volume.value = val[0];
                   }}
                 />
-                <div className="text-xs text-muted-foreground pl-1">{volume} dB</div>
+                <div className="text-xs text-muted-foreground">{volume} dB</div>
               </div>
-
+  
               <div className="space-y-2">
-                <Label className="text-sm">BPM</Label>
+                <Label className="text-sm">⏱️ BPM</Label>
                 <Slider
                   min={40}
                   max={180}
@@ -295,14 +302,14 @@ export default function MusicSheetViewer() {
                     Tone.Transport.bpm.value = val[0];
                   }}
                 />
-                <div className="text-xs text-muted-foreground pl-1">{bpm} BPM</div>
+                <div className="text-xs text-muted-foreground">{bpm} BPM</div>
               </div>
             </div>
-
-            {/* CONTROLE DE LOOP */}
-            <div className="rounded-lg border p-4 shadow-sm space-y-4 bg-gray-50">
-              <h2 className="font-semibold text-lg text-gray-700">Loop</h2>
-
+  
+            {/* LOOP CONTROLS */}
+            <div className="rounded-xl border bg-white p-6 shadow-md space-y-6">
+              <h2 className="text-xl font-semibold text-zinc-700">🔁 Loop</h2>
+  
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="loop"
@@ -311,9 +318,9 @@ export default function MusicSheetViewer() {
                 />
                 <Label htmlFor="loop">Ativar loop entre compassos</Label>
               </div>
-
+  
               <div className="space-y-2">
-                <Label className="text-sm">Compasso inicial</Label>
+                <Label className="text-sm">Início do loop</Label>
                 <Slider
                   min={1}
                   max={maxMeasure}
@@ -321,11 +328,11 @@ export default function MusicSheetViewer() {
                   value={[loopRange[0]]}
                   onValueChange={(val) => setLoopRange(([_, end]) => [val[0], end])}
                 />
-                <div className="text-xs pl-1">{loopRange[0]}</div>
+                <div className="text-xs">{loopRange[0]}</div>
               </div>
-
+  
               <div className="space-y-2">
-                <Label className="text-sm">Compasso final</Label>
+                <Label className="text-sm">Fim do loop</Label>
                 <Slider
                   min={1}
                   max={maxMeasure}
@@ -333,14 +340,17 @@ export default function MusicSheetViewer() {
                   value={[loopRange[1]]}
                   onValueChange={(val) => setLoopRange(([start]) => [start, val[0]])}
                 />
-                <div className="text-xs pl-1">{loopRange[1]}</div>
+                <div className="text-xs">{loopRange[1]}</div>
               </div>
             </div>
           </div>
         </>
       ) : (
-        <p className="text-gray-500">Nenhum arquivo disponível para visualização.</p>
+        <div className="text-center text-gray-500 text-lg mt-10">
+          Nenhum arquivo disponível para visualização.
+        </div>
       )}
     </div>
   );
+  
 }
