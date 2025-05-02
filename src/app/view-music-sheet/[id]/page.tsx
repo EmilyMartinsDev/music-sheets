@@ -112,7 +112,7 @@ export default function MusicSheetViewer() {
             id,
             SECRET_KEY,
             fetchMusicSheetPdf,
-            updateMusicSheet
+            updateMusicSheet 
           );
         }
 
